@@ -1,0 +1,20 @@
+{
+    "name": "RacingGame.Editor",
+    "rootNamespace": "RacingGame.Editor",
+    "references": [
+        "RacingGame",
+        "Unity.Cinemachine",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
