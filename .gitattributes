@@ -1,0 +1,30 @@
+# Normalise line endings; Unity writes LF and expects it back
+* text=auto eol=lf
+
+# Unity YAML (force text so diffs and merges stay readable)
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
+*.mat text eol=lf
+*.anim text eol=lf
+*.controller text eol=lf
+*.asmdef text eol=lf
+*.inputactions text eol=lf
+*.cs text eol=lf diff=csharp
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.psd binary
+*.fbx binary
+*.blend binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.ttf binary
+*.otf binary
+*.dll binary
+*.unitypackage binary
