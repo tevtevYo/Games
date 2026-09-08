@@ -22,6 +22,14 @@ namespace RacingGame.Editor
         [MenuItem("RacingGame/Build Test Scene")]
         public static void Build()
         {
+            // Scenes cannot be created during Play mode. Stop it, then build once the editor is back.
+            if (EditorApplication.isPlaying)
+            {
+                EditorApplication.playModeStateChanged += BuildAfterPlayModeStops;
+                EditorApplication.isPlaying = false;
+                return;
+            }
+
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -42,6 +50,13 @@ namespace RacingGame.Editor
 
             Selection.activeGameObject = car;
             Debug.Log("Test scene built and saved to " + ScenePath + ". Press Play and drive with W A S D. Space is the handbrake.");
+        }
+
+        static void BuildAfterPlayModeStops(PlayModeStateChange state)
+        {
+            if (state != PlayModeStateChange.EnteredEditMode) return;
+            EditorApplication.playModeStateChanged -= BuildAfterPlayModeStops;
+            Build();
         }
 
         static void BuildGround(Material mat)
