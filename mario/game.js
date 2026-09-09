@@ -449,7 +449,7 @@ function update(dt) {
     updateItems(dt);
     updateFireballs(dt);
     updateTimer(dt);
-    updateCamera();
+    updateCamera(dt);
   } else if (G.state === 'dying') {
     const p = G.player;
     G.stateTimer += dt;
@@ -471,12 +471,15 @@ function updateTimer(dt) {
   }
 }
 
-function updateCamera() {
+function updateCamera(dt) {
+  // The camera follows in both directions, so you can walk back through the
+  // level at any time. The player sits 40% from the left when heading right
+  // and 60% when heading left, so you can see where you are going.
   const p = G.player;
-  const target = p.x - VIEW_W * 0.4;
-  G.camX = Math.max(G.camX, target);   // camera never scrolls back, like the original
-  G.camX = Math.min(G.camX, LEVEL_W * TILE - VIEW_W);
-  if (p.x < G.camX) { p.x = G.camX; if (p.vx < 0) p.vx = 0; }
+  const anchor = p.facing < 0 ? 0.6 : 0.4;
+  const target = p.x + p.w / 2 - VIEW_W * anchor;
+  G.camX += (target - G.camX) * Math.min(1, dt * 6);
+  G.camX = Math.max(0, Math.min(G.camX, LEVEL_W * TILE - VIEW_W));
 }
 
 function updatePlayer(dt) {
