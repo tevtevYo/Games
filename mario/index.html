@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="theme-color" content="#1a1a2e" />
   <title>Super Plumber Bros</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -25,6 +29,18 @@
       </p>
     </div>
   </div>
+  <!-- On-screen controls, shown only on touch devices -->
+  <div id="touch" aria-hidden="true">
+    <div class="pad">
+      <button type="button" data-key="ArrowLeft" aria-label="Move left">&#9664;</button>
+      <button type="button" data-key="ArrowRight" aria-label="Move right">&#9654;</button>
+    </div>
+    <div class="actions">
+      <button type="button" data-key="ShiftLeft" class="run" aria-label="Run">RUN</button>
+      <button type="button" data-key="Space" class="jump" aria-label="Jump">JUMP</button>
+    </div>
+  </div>
+  <button type="button" id="fullscreen" aria-label="Full screen" title="Full screen">&#x26F6;</button>
   <script src="game.js"></script>
 </body>
 </html>

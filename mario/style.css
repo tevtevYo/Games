@@ -89,3 +89,117 @@ canvas {
     visibility: hidden;
   }
 }
+
+/* ---- Touch controls (phones and tablets) ---------------------------------- */
+
+html, body {
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#touch {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+  z-index: 20;
+}
+
+#touch .pad,
+#touch .actions {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+#touch button {
+  pointer-events: auto;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font: bold 15px "Courier New", Courier, monospace;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 0 #000;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+#touch button.jump {
+  width: 90px;
+  height: 90px;
+  background: rgba(229, 37, 33, 0.35);
+  border-color: rgba(255, 120, 110, 0.8);
+}
+
+#touch button.run {
+  background: rgba(42, 95, 208, 0.35);
+  border-color: rgba(120, 160, 255, 0.8);
+}
+
+#touch button.active {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(0.94);
+}
+
+#fullscreen {
+  display: none;
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 20px;
+  z-index: 21;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Show the controls when the device has no hover / a coarse pointer, or once a
+   touch has actually been detected (body.touch is set by game.js). */
+@media (hover: none) and (pointer: coarse) {
+  #touch { display: flex; }
+  #fullscreen { display: block; }
+}
+body.touch #touch { display: flex; }
+body.touch #fullscreen { display: block; }
+body.touch:fullscreen #fullscreen { display: none; }
+
+/* Compact HUD and overlay on small screens */
+@media (max-width: 700px) {
+  #hud { font-size: 12px; padding: 5px 10px; }
+  #overlay { top: 28px; }
+  #overlay h1 { font-size: 26px; text-shadow: 2px 2px 0 #c0392b, 4px 4px 0 #000; }
+  #overlay p { font-size: 15px; }
+  #overlay p.controls { font-size: 11px; }
+}
+
+/* Stop the page from panning while playing on a touch screen */
+body.touch #game-container,
+body.touch canvas {
+  touch-action: none;
+}
+
+/* Keep each HUD item on one line on phones; drop the world label when cramped */
+#hud span {
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  #hud { font-size: 10px; padding: 5px 8px; letter-spacing: 0; }
+  #hud-world { display: none; }
+}

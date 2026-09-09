@@ -285,7 +285,8 @@ function startRound() {
 
 function showOverlay(title, text) {
   overlayTitle.textContent = title;
-  overlayText.textContent = text;
+  // On touch devices the prompt says "Tap" instead of naming keys
+  overlayText.textContent = TouchControls.enabled ? text.replace(/Press ENTER( or SPACE)?/, 'Tap') : text;
   overlay.classList.remove('hidden');
 }
 
@@ -1149,6 +1150,106 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => { keys[keyCode(e)] = false; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+// ---------------------------------------------------------------------------
+// Touch controls - mobile only. Nothing here runs on a mouse-and-keyboard
+// desktop: the on-screen buttons stay hidden and the layout is unchanged.
+// ---------------------------------------------------------------------------
+const TouchControls = (() => {
+  let enabled = false;
+  const container = document.getElementById('game-container');
+  const hudEl = document.getElementById('hud');
+  const fsBtn = document.getElementById('fullscreen');
+  const buttons = Array.from(document.querySelectorAll('#touch button[data-key]'));
+  const pad = document.querySelector('#touch .pad');
+  const held = new Map();            // pointerId -> button currently held
+
+  // Scale the game so it fits a phone screen (landscape or portrait)
+  function fit() {
+    if (!enabled) return;
+    const availW = window.innerWidth;
+    const availH = window.innerHeight - hudEl.offsetHeight;
+    const w = Math.max(240, Math.min(availW, availH * VIEW_W / VIEW_H));
+    container.style.width = Math.floor(w) + 'px';
+  }
+
+  function enable() {
+    if (enabled) return;
+    enabled = true;
+    document.body.classList.add('touch');
+    overlayText.textContent = overlayText.textContent.replace(/Press ENTER( or SPACE)?/, 'Tap');
+    document.querySelector('#overlay .controls').innerHTML =
+      'Hold &#9664; &#9654; to move &nbsp;|&nbsp; JUMP to jump (hold for higher) &nbsp;|&nbsp; RUN to sprint<br />' +
+      'Turn your phone sideways for a bigger view.';
+    fit();
+  }
+
+  function press(btn, on) {
+    keys[btn.dataset.key] = on;
+    btn.classList.toggle('active', on);
+  }
+  function release(e) {
+    const btn = held.get(e.pointerId);
+    if (!btn) return;
+    press(btn, false);
+    held.delete(e.pointerId);
+  }
+
+  for (const btn of buttons) {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      enable();
+      Sound.unlock();
+      held.set(e.pointerId, btn);
+      press(btn, true);
+    });
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  // Releases are tracked on the window so a finger that slides off a button
+  // still lets go of it.
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  // Sliding the thumb between left and right on the pad switches direction
+  window.addEventListener('pointermove', (e) => {
+    const btn = held.get(e.pointerId);
+    if (!btn || btn.parentElement !== pad) return;
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    if (over && over !== btn && over.parentElement === pad && over.dataset.key) {
+      press(btn, false);
+      press(over, true);
+      held.set(e.pointerId, over);
+    }
+  });
+  window.addEventListener('blur', () => { for (const b of buttons) press(b, false); held.clear(); });
+
+  // Tap anywhere on the title / game over / win screen to start
+  overlay.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') enable();
+    if (G.state === 'title' || G.state === 'gameover' || G.state === 'win') {
+      Sound.unlock();
+      startGame();
+    }
+  });
+
+  // Full screen button (hidden on desktop). Locks to landscape where allowed.
+  fsBtn.addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) { await document.exitFullscreen(); return; }
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape').catch(() => {});
+    } catch (err) { /* not supported (e.g. iPhone Safari) - ignore */ }
+    setTimeout(fit, 300);
+  });
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', () => setTimeout(fit, 250));
+  // Turn on right away for devices that report a coarse pointer with no hover
+  // (phones, tablets); otherwise wait for the first real touch.
+  if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) enable();
+  else window.addEventListener('touchstart', enable, { once: true, passive: true });
+
+  return { get enabled() { return enabled; }, fit };
+})();
 
 // ---------------------------------------------------------------------------
 // Main loop
