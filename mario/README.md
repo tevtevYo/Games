@@ -3,7 +3,14 @@
 A Mario-style side-scrolling platformer written in plain HTML5 Canvas and JavaScript.
 No build step, no dependencies.
 
-## Run it
+## Play online
+
+https://tevtevyo.github.io/Games/
+
+Every push to `main` that touches `mario/` republishes the site automatically
+(see `.github/workflows/pages.yml`).
+
+## Run it locally
 
 Open `index.html` in any modern browser, or in VS Code right-click it and choose
 "Open with Live Server" if you have that extension.
