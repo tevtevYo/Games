@@ -10,6 +10,7 @@ window.bot = function (opts) {
   clear();
   const ev = [];
   let lastX = 0, lastProg = 0, jt = 0, lastState = 'playing', deaths = 0, maxX = 0;
+  let jumpFor = '';                 // why the current jump was made: 'pit', 'enemy' or 'wall'
   const snap = (tag) => {
     const P = G.player;
     const near = G.enemies.filter(e => e.alive && Math.abs(e.x - P.x) < 120)
@@ -27,7 +28,6 @@ window.bot = function (opts) {
     }
     if (G.state === 'win' || G.state === 'gameover') break;
     if (G.state !== 'playing') { clear(); step(); continue; }
-    keys.ArrowRight = true;
     keys.ShiftLeft = !!opts.run;
     const look = opts.run ? 110 : 70;
     const ty0 = Math.floor(P.y / 32), ty1 = Math.floor((P.y + P.h - 1) / 32);
@@ -43,8 +43,19 @@ window.bot = function (opts) {
     for (let ty = footRow; ty < 15; ty++) if (isSolid(colA, ty)) groundAhead = true;
     const enemyAhead = G.enemies.some(e => e.alive && e.active && e.x > P.x && e.x - P.x < look
       && Math.abs((e.y + e.h) - (P.y + P.h)) < 40);
-    if (P.onGround && jt <= 0 && (wall || !groundAhead || enemyAhead)) jt = 0.35;
-    if (jt > 0) { keys.Space = true; jt -= dt; } else keys.Space = false;
+    const want = wall || !groundAhead || enemyAhead;
+    if (P.onGround) jumpFor = '';
+    if (P.onGround && jt <= 0 && want) { jt = 0.35; jumpFor = !groundAhead ? 'pit' : enemyAhead ? 'enemy' : 'wall'; }
+    // Steer in the air, as a player would: if a pit is about to be under us and
+    // this jump was not made to clear it, brake so we land short.
+    const brake = !P.onGround && !groundAhead && jumpFor !== 'pit';
+    if (brake) { keys.ArrowRight = false; keys.ArrowLeft = true; }
+    else { keys.ArrowLeft = false; keys.ArrowRight = true; }
+    if (jt > 0) { keys.Space = true; jt -= dt; }
+    // Airborne but a hazard is coming up: tap jump every other frame so the
+    // game's jump buffer fires the instant we land (as a player would).
+    else if (!P.onGround && want) { keys.Space = (Math.round(t * 120) % 2) === 0; }
+    else keys.Space = false;
     step();
     if (P.x > maxX) maxX = P.x;
     if (P.x > lastX + 1) { lastX = P.x; lastProg = t; }
