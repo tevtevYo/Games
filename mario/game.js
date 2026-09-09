@@ -195,6 +195,7 @@ const G = {
   player: null,
   enemies: [],
   items: [],
+  fireballs: [],
   particles: [],
   popups: [],
   bumps: [],           // block bump animations {tx, ty, t}
@@ -1342,8 +1343,13 @@ function frame(now) {
   // Sub-step physics so fast objects never tunnel through tiles
   const steps = Math.ceil(dt / (1 / 120));
   const sdt = dt / steps;
-  for (let i = 0; i < steps; i++) update(sdt);
-  render();
+  // An error in one frame must not kill the loop for good: report it and keep going.
+  try {
+    for (let i = 0; i < steps; i++) update(sdt);
+    render();
+  } catch (err) {
+    console.error(err);
+  }
   requestAnimationFrame(frame);
 }
 
