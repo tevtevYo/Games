@@ -22,6 +22,7 @@ Open `index.html` in any modern browser, or in VS Code right-click it and choose
 | Move   | Left / Right arrows, A / D  |
 | Jump   | Up arrow, W, or Space       |
 | Run    | Shift                       |
+| Fire   | X (or F), with the fire power |
 | Start  | Enter or Space              |
 
 Hold jump longer to jump higher. Running makes you jump higher too.
@@ -30,7 +31,9 @@ Hold jump longer to jump higher. Running makes you jump higher too.
 
 - Tile-based level with pits, pipes, stairs, bricks, question blocks and a flag pole
 - Goombas (stomp them) and Koopas (stomp, then kick the shell into other enemies)
-- Coins, super mushrooms that make you big, and brick smashing while big
+- Coins, and question blocks that release either a super mushroom (grow, smash bricks)
+  or a fire mushroom (grow plus straight-flying fireballs) with equal odds
+- Fireballs: X on the keyboard; on touch screens the RUN button becomes FIRE while you have the power
 - Score, coin counter, 400-second timer, lives, and a course-clear time bonus
 - Synthesized sound effects with WebAudio, no audio files needed
 

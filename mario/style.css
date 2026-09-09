@@ -203,3 +203,9 @@ body.touch canvas {
   #hud { font-size: 10px; padding: 5px 8px; letter-spacing: 0; }
   #hud-world { display: none; }
 }
+
+/* RUN turns into FIRE while the fire power is active */
+#touch button.fire {
+  background: rgba(255, 106, 0, 0.4);
+  border-color: rgba(255, 190, 90, 0.9);
+}

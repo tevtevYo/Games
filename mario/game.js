@@ -76,6 +76,7 @@ const Sound = (() => {
     powerup: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.12, 'square', 0.06, null, i * 0.06)); },
     powerupAppear: () => { [392, 523, 659].forEach((f, i) => tone(f, 0.1, 'square', 0.05, null, i * 0.05)); },
     hurt: () => tone(400, 0.3, 'sawtooth', 0.07, 100),
+    fire: () => tone(900, 0.09, 'square', 0.06, 250),
     die: () => { [660, 520, 400, 300, 200].forEach((f, i) => tone(f, 0.2, 'square', 0.07, null, i * 0.15)); },
     flag: () => { [523, 587, 659, 698, 784, 880, 988, 1047].forEach((f, i) => tone(f, 0.12, 'square', 0.06, null, i * 0.07)); },
     win: () => { [784, 784, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.18, 'square', 0.07, null, i * 0.13)); },
@@ -218,6 +219,8 @@ function makePlayer(x, y) {
     onGround: false,
     facing: 1,
     big: false,
+    fire: false,
+    fireHeld: false,
     invincible: 0,
     jumpHeld: false,
     jumpBufferT: 0,
@@ -234,8 +237,9 @@ function makeEnemy(spec) {
   return { type: 'koopa', x: spec.x, y: spec.y, w: 28, h: 40, vx: -50, vy: 0, alive: true, active: false, animT: 0, shell: false, shellMoving: false, kickCooldown: 0 };
 }
 
-function makeMushroom(tx, ty) {
-  return { type: 'mushroom', x: tx * TILE + 2, y: ty * TILE, w: 28, h: 28, vx: 0, vy: 0, emerging: 1, targetY: (ty - 1) * TILE + 4 };
+function makeMushroom(tx, ty, kind) {
+  // kind: 'mushroom' (grow) or 'firemushroom' (grow + fireballs)
+  return { type: kind || 'mushroom', x: tx * TILE + 2, y: ty * TILE, w: 28, h: 28, vx: 0, vy: 0, emerging: 1, targetY: (ty - 1) * TILE + 4 };
 }
 
 function makeCoinPop(tx, ty) {
@@ -272,6 +276,7 @@ function startRound() {
   G.player = makePlayer(G.level.playerStart.x, G.level.playerStart.y);
   G.enemies = G.level.enemies.map(makeEnemy);
   G.items = [];
+  G.fireballs = [];
   G.particles = [];
   G.popups = [];
   G.bumps = [];
@@ -298,6 +303,7 @@ function killPlayer() {
   p.vy = -520;
   p.vx = 0;
   p.big = false;
+  p.fire = false;
   p.h = SMALL_H;
   Sound.die();
 }
@@ -307,6 +313,7 @@ function hurtPlayer() {
   if (p.invincible > 0) return;
   if (p.big) {
     p.big = false;
+    p.fire = false;
     p.y += BIG_H - SMALL_H;
     p.h = SMALL_H;
     p.invincible = 2;
@@ -390,15 +397,10 @@ function hitBlockFromBelow(tx, ty) {
   if (t === '?' || t === 'M') {
     setTile(tx, ty, 'U');
     G.bumps.push({ tx, ty, t: 0 });
-    if (t === '?' || (t === 'M' && p.big)) {
-      // Big players get a coin from mushroom blocks too - keeps it simple and fair
-      G.items.push(makeCoinPop(tx, ty));
-      addCoin();
-      addScore(200, tx * TILE, (ty - 1) * TILE);
-    } else {
-      G.items.push(makeMushroom(tx, ty));
-      Sound.powerupAppear();
-    }
+    // Every question block releases a mushroom: half the time the normal one
+    // (grow, smash bricks), half the time the fire one (grow + fireballs).
+    G.items.push(makeMushroom(tx, ty, Math.random() < 0.5 ? 'firemushroom' : 'mushroom'));
+    Sound.powerupAppear();
     bumpEnemiesOn(tx, ty);
   } else if (t === 'B') {
     if (p.big) {
@@ -436,6 +438,7 @@ function spawnBrickShards(tx, ty) {
 // ---------------------------------------------------------------------------
 function update(dt) {
   G.elapsed += dt;
+  TouchControls.setFireMode(!!(G.player && G.player.fire));
   for (const b of G.bumps) b.t += dt;
   G.bumps = G.bumps.filter(b => b.t < 0.25);
 
@@ -443,6 +446,7 @@ function update(dt) {
     updatePlayer(dt);
     updateEnemies(dt);
     updateItems(dt);
+    updateFireballs(dt);
     updateTimer(dt);
     updateCamera();
   } else if (G.state === 'dying') {
@@ -520,6 +524,11 @@ function updatePlayer(dt) {
   if (hit.bottom && p.vy > 0) p.vy = 0;
   if (hit.top && p.vy < 0) { p.vy = 0; hitBlockFromBelow(hit.topTile.tx, hit.topTile.ty); }
   if (hit.left || hit.right) p.vx = 0;
+
+  // Fireballs: X (or F) on the keyboard, the FIRE button on touch screens
+  const fireKey = keys.KeyX || keys.KeyF;
+  if (fireKey && !p.fireHeld) shootFireball();
+  p.fireHeld = fireKey;
 
   if (p.invincible > 0) p.invincible -= dt;
   if (p.growT > 0) p.growT -= dt;
@@ -636,7 +645,7 @@ function updateItems(dt) {
       it.y += it.vy * dt;
       continue;
     }
-    if (it.type === 'mushroom') {
+    if (it.type === 'mushroom' || it.type === 'firemushroom') {
       if (it.emerging > 0) {
         it.y -= 40 * dt;
         if (it.y <= it.targetY) { it.y = it.targetY; it.emerging = 0; it.vx = 90; }
@@ -651,12 +660,65 @@ function updateItems(dt) {
       if (overlaps(p, it)) {
         it.dead = true;
         if (!p.big) { p.big = true; p.h = BIG_H; p.y -= BIG_H - SMALL_H; p.growT = 0.6; }
+        if (it.type === 'firemushroom') p.fire = true;
         addScore(1000, it.x, it.y);
         Sound.powerup();
       }
     }
   }
   G.items = G.items.filter(it => !it.dead && !(it.type === 'coinpop' && it.t > 0.7));
+}
+
+// ---------------------------------------------------------------------------
+// Fireballs (fire mushroom power): fly in a straight line, kill enemies
+// ---------------------------------------------------------------------------
+const FIREBALL = { speed: 460, life: 1.4, max: 2, size: 12 };
+
+function shootFireball() {
+  const p = G.player;
+  if (!p.fire || G.state !== 'playing' || G.fireballs.length >= FIREBALL.max) return;
+  const x = p.facing > 0 ? p.x + p.w : p.x - FIREBALL.size;
+  const y = p.y + (p.big ? 26 : 14);
+  G.fireballs.push({ x, y, w: FIREBALL.size, h: FIREBALL.size, vx: p.facing * FIREBALL.speed, t: 0, spin: 0 });
+  Sound.fire();
+}
+
+function updateFireballs(dt) {
+  for (const f of G.fireballs) {
+    f.t += dt;
+    f.spin += dt * 20;
+    f.x += f.vx * dt;
+    const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
+    const hitWall = isSolid(Math.floor(cx / TILE), Math.floor(cy / TILE));
+    const offScreen = f.x < G.camX - 64 || f.x > G.camX + VIEW_W + 64;
+    if (f.t > FIREBALL.life || hitWall || offScreen) { f.dead = true; if (hitWall) firePuff(cx, cy); continue; }
+    for (const e of G.enemies) {
+      if (!e.alive || !e.active || !overlaps(f, e)) continue;
+      e.alive = false; e.flipped = true; e.vy = -320; e.vx = Math.sign(f.vx) * 80;
+      addScore(200, e.x, e.y);
+      Sound.stomp();
+      f.dead = true;
+      firePuff(cx, cy);
+      break;
+    }
+  }
+  G.fireballs = G.fireballs.filter(f => !f.dead);
+}
+
+function firePuff(cx, cy) {
+  for (let i = 0; i < 4; i++) {
+    G.particles.push({ x: cx, y: cy, vx: (i % 2 ? 1 : -1) * (60 + i * 30), vy: -120 - i * 40, t: 0, life: 0.35, color: i % 2 ? '#ffb000' : '#ff5a1f', size: 5 });
+  }
+}
+
+function drawFireball(f) {
+  ctx.save();
+  ctx.translate(f.x + f.w / 2, f.y + f.h / 2);
+  ctx.rotate(f.spin);
+  ctx.fillStyle = '#ff5a1f'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff6c8'; ctx.fillRect(-2, -5, 4, 3);
+  ctx.restore();
 }
 
 function updateFlagSequence(dt) {
@@ -723,6 +785,7 @@ function render() {
   drawTiles();
   drawFlag();
   for (const it of G.items) drawItem(it);
+  for (const f of G.fireballs) drawFireball(f);
   for (const e of G.enemies) drawEnemy(e);
   if (G.player && !G.player.hidden) drawPlayer(G.player);
   for (const s of G.particles) {
@@ -953,7 +1016,8 @@ function drawCastle() {
 
 function drawItem(it) {
   if (it.type === 'coinpop') { drawCoin(it.x + 8, it.y + 12); return; }
-  if (it.type === 'mushroom') {
+  if (it.type === 'mushroom' || it.type === 'firemushroom') {
+    const fire = it.type === 'firemushroom';
     ctx.save();
     if (it.emerging) {
       // Clip to just above the block so it "rises" out
@@ -964,10 +1028,10 @@ function drawItem(it) {
     ctx.fillRect(x + 6, y + 16, 16, 12);
     ctx.fillStyle = '#000';
     ctx.fillRect(x + 9, y + 19, 3, 5); ctx.fillRect(x + 16, y + 19, 3, 5);
-    ctx.fillStyle = '#e03030';
+    ctx.fillStyle = fire ? '#ff6a00' : '#e03030';
     ctx.beginPath(); ctx.arc(x + 14, y + 14, 14, Math.PI, 0); ctx.fill();
     ctx.fillRect(x, y + 12, 28, 6);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = fire ? '#ffe14d' : '#fff';
     ctx.beginPath(); ctx.arc(x + 8, y + 10, 4, 0, Math.PI * 2); ctx.arc(x + 20, y + 10, 4, 0, Math.PI * 2);
     ctx.arc(x + 14, y + 4, 3, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -1054,33 +1118,35 @@ function drawPlayer(p) {
   const s = big ? 2 : 1;         // vertical scale for body parts
   // Colors
   const RED = '#e52521', SKIN = '#ffc890', BLUE = '#2a5fd0', BROWN = '#6b3a12', HAIR = '#4a2000';
+  // Fire power swaps the outfit: white hat and shirt, red overalls
+  const SHIRT = p.fire ? '#f6f6f6' : RED, PANTS = p.fire ? RED : BLUE;
 
   if (big) {
     // Hat
-    ctx.fillStyle = RED; ctx.fillRect(4, 0, 18, 8); ctx.fillRect(8, 8, 18, 4);
+    ctx.fillStyle = SHIRT; ctx.fillRect(4, 0, 18, 8); ctx.fillRect(8, 8, 18, 4);
     // Face
     ctx.fillStyle = SKIN; ctx.fillRect(6, 8, 14, 14);
     ctx.fillStyle = HAIR; ctx.fillRect(4, 8, 4, 10);
     ctx.fillStyle = '#000'; ctx.fillRect(15, 11, 3, 4);
     ctx.fillStyle = HAIR; ctx.fillRect(12, 17, 10, 3);      // moustache
     // Shirt / arms
-    ctx.fillStyle = RED; ctx.fillRect(2, 22, 20, 12);
+    ctx.fillStyle = SHIRT; ctx.fillRect(2, 22, 20, 12);
     // Overalls
-    ctx.fillStyle = BLUE; ctx.fillRect(4, 30, 16, 20);
+    ctx.fillStyle = PANTS; ctx.fillRect(4, 30, 16, 20);
     ctx.fillRect(6, 24, 4, 8); ctx.fillRect(14, 24, 4, 8);
     ctx.fillStyle = '#ffd700'; ctx.fillRect(7, 32, 3, 3); ctx.fillRect(14, 32, 3, 3);
     // Arms: red sleeve at the shoulder, skin hand below. Back arm swings opposite
     // to the front arm while walking; both go up when jumping.
     const swing = step === 1 ? 2 : 0;
     if (jumping) {
-      ctx.fillStyle = RED; ctx.fillRect(-4, 20, 6, 5); ctx.fillRect(20, 20, 6, 5);
+      ctx.fillStyle = SHIRT; ctx.fillRect(-4, 20, 6, 5); ctx.fillRect(20, 20, 6, 5);
       ctx.fillStyle = SKIN; ctx.fillRect(-4, 13, 6, 8); ctx.fillRect(20, 13, 6, 8);
     } else {
-      ctx.fillStyle = RED; ctx.fillRect(-4, 22, 6, 6); ctx.fillRect(20, 22, 6, 6);
+      ctx.fillStyle = SHIRT; ctx.fillRect(-4, 22, 6, 6); ctx.fillRect(20, 22, 6, 6);
       ctx.fillStyle = SKIN; ctx.fillRect(-4, 28 + (2 - swing), 6, 8); ctx.fillRect(20, 28 + swing, 6, 8);
     }
     // Legs / shoes
-    ctx.fillStyle = BLUE;
+    ctx.fillStyle = PANTS;
     ctx.fillStyle = BROWN;
     if (jumping) { ctx.fillRect(2, 50, 10, 10); ctx.fillRect(14, 48, 10, 10); }
     else if (step === 1) { ctx.fillRect(0, 50, 10, 10); ctx.fillRect(14, 50, 10, 10); }
@@ -1089,25 +1155,25 @@ function drawPlayer(p) {
   } else {
     // Small sprite: 24 x 36
     // Hat
-    ctx.fillStyle = RED; ctx.fillRect(4, 0, 16, 5); ctx.fillRect(8, 5, 16, 3);
+    ctx.fillStyle = SHIRT; ctx.fillRect(4, 0, 16, 5); ctx.fillRect(8, 5, 16, 3);
     // Face
     ctx.fillStyle = SKIN; ctx.fillRect(6, 5, 12, 11);
     ctx.fillStyle = HAIR; ctx.fillRect(4, 5, 3, 8);
     ctx.fillStyle = '#000'; ctx.fillRect(14, 8, 2, 3);
     ctx.fillStyle = HAIR; ctx.fillRect(11, 13, 8, 2);
     // Shirt
-    ctx.fillStyle = RED; ctx.fillRect(3, 16, 18, 7);
+    ctx.fillStyle = SHIRT; ctx.fillRect(3, 16, 18, 7);
     // Overalls
-    ctx.fillStyle = BLUE; ctx.fillRect(5, 21, 14, 9);
+    ctx.fillStyle = PANTS; ctx.fillRect(5, 21, 14, 9);
     ctx.fillRect(7, 16, 3, 6); ctx.fillRect(14, 16, 3, 6);
     ctx.fillStyle = '#ffd700'; ctx.fillRect(8, 22, 2, 2); ctx.fillRect(14, 22, 2, 2);
     // Arms: red sleeve at the shoulder, skin hand below (see big version)
     const swing = step === 1 ? 2 : 0;
     if (jumping) {
-      ctx.fillStyle = RED; ctx.fillRect(0, 15, 5, 3); ctx.fillRect(19, 15, 5, 3);
+      ctx.fillStyle = SHIRT; ctx.fillRect(0, 15, 5, 3); ctx.fillRect(19, 15, 5, 3);
       ctx.fillStyle = SKIN; ctx.fillRect(0, 10, 5, 6); ctx.fillRect(19, 10, 5, 6);
     } else {
-      ctx.fillStyle = RED; ctx.fillRect(0, 16, 5, 4); ctx.fillRect(19, 16, 5, 4);
+      ctx.fillStyle = SHIRT; ctx.fillRect(0, 16, 5, 4); ctx.fillRect(19, 16, 5, 4);
       ctx.fillStyle = SKIN; ctx.fillRect(0, 20 + (2 - swing), 5, 6); ctx.fillRect(19, 20 + swing, 5, 6);
     }
     // Shoes
@@ -1179,7 +1245,7 @@ const TouchControls = (() => {
     document.body.classList.add('touch');
     overlayText.textContent = overlayText.textContent.replace(/Press ENTER( or SPACE)?/, 'Tap');
     document.querySelector('#overlay .controls').innerHTML =
-      'Hold &#9664; &#9654; to move &nbsp;|&nbsp; JUMP to jump (hold for higher) &nbsp;|&nbsp; RUN to sprint<br />' +
+      'Hold &#9664; &#9654; to move &nbsp;|&nbsp; JUMP to jump (hold for higher) &nbsp;|&nbsp; RUN to sprint, it becomes FIRE with a fire mushroom<br />' +
       'Turn your phone sideways for a bigger view.';
     fit();
   }
@@ -1248,7 +1314,21 @@ const TouchControls = (() => {
   if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) enable();
   else window.addEventListener('touchstart', enable, { once: true, passive: true });
 
-  return { get enabled() { return enabled; }, fit };
+  // With the fire power the RUN button becomes FIRE (a phone has no room for a
+  // third button). update() calls this every frame; it only acts on a change.
+  const runBtn = document.querySelector('#touch button.run');
+  let fireMode = false;
+  function setFireMode(on) {
+    if (on === fireMode) return;
+    fireMode = on;
+    for (const [id, b] of held) if (b === runBtn) { press(b, false); held.delete(id); }
+    keys[runBtn.dataset.key] = false;
+    runBtn.dataset.key = on ? 'KeyX' : 'ShiftLeft';
+    runBtn.textContent = on ? 'FIRE' : 'RUN';
+    runBtn.classList.toggle('fire', on);
+  }
+
+  return { get enabled() { return enabled; }, fit, setFireMode };
 })();
 
 // ---------------------------------------------------------------------------

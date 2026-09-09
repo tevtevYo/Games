@@ -21,20 +21,50 @@
   };
   const jump = () => { keys.Space = true; step(40); keys.Space = false; };
 
-  // 1. Coin question block
-  fresh(); place(16);
-  const s0 = G.score, c0 = G.coins;
-  jump(); step(60);
-  R.coinBlock = { ok: tileAt(16, 9) === 'U' && G.coins === c0 + 1 && G.score > s0, tile: tileAt(16, 9), coins: G.coins - c0 };
+  // 1. Question block: releases a normal mushroom or a fire mushroom (50/50)
+  const realRandom = Math.random;
+  fresh(); place(16); Math.random = () => 0.9; jump(); step(30);
+  const normalDrop = !!G.items.find(i => i.type === 'mushroom');
+  const used = tileAt(16, 9);
+  fresh(); place(16); Math.random = () => 0.1; jump(); step(30);
+  const fireDrop = !!G.items.find(i => i.type === 'firemushroom');
+  Math.random = realRandom;
+  R.questionBlock = { ok: used === 'U' && normalDrop && fireDrop, used, normalDrop, fireDrop };
 
   // 2. Mushroom block -> mushroom appears -> collect -> big
   fresh(); place(22);
-  jump(); step(30);
+  Math.random = () => 0.9; jump(); step(30); Math.random = realRandom;
   const mush = G.items.find(i => i.type === 'mushroom');
   const appeared = !!mush;
   // stand still and wait, then chase it to the right
   step(120); keys.ArrowRight = true; step(400); clear();
   R.mushroom = { ok: appeared && G.player.big && G.player.h === 60, appeared, big: G.player.big, h: G.player.h };
+
+  // 2b. Fire mushroom -> fire power; X shoots a straight fireball that kills a
+  //     goomba; at most two fireballs; getting hurt loses the power.
+  fresh(); place(22);
+  Math.random = () => 0.1; jump(); step(30); Math.random = realRandom;
+  step(120); keys.ArrowRight = true; step(400); clear();
+  const gotFire = G.player.fire && G.player.big;
+  // Chasing the mushroom leaves the player pressed against the pipe at tile 38,
+  // so move back to open ground before shooting.
+  G.player.x = 8 * 32; G.player.y = FLOOR - G.player.h; G.player.vx = 0; G.player.vy = 0; G.camX = 0; step(2);
+  const g4 = G.enemies.find(e => e.type === 'goomba');
+  g4.x = G.player.x + 150; g4.y = FLOOR - g4.h; g4.active = true; g4.vx = 0;
+  G.player.facing = 1; keys.KeyX = true; step(1); keys.KeyX = false;
+  const spawned = G.fireballs.length === 1;
+  const fy0 = spawned ? G.fireballs[0].y : -1;
+  step(20);
+  const straight = spawned && G.fireballs.length === 1 && G.fireballs[0].y === fy0 && G.fireballs[0].x > G.player.x + 60;
+  step(60);
+  const killed = !g4.alive;
+  for (let i = 0; i < 3; i++) { keys.KeyX = true; step(1); keys.KeyX = false; step(1); }
+  const capped = G.fireballs.length <= 2;
+  G.fireballs = []; G.player.invincible = 0;
+  const g5 = G.enemies.filter(e => e.type === 'goomba')[1];
+  g5.x = G.player.x + 40; g5.y = FLOOR - g5.h; g5.active = true; g5.vx = -55; step(120);
+  R.fire = { ok: gotFire && spawned && straight && killed && capped && !G.player.fire && !G.player.big && G.state === 'playing',
+    gotFire, spawned, straight, killed, capped, lostFire: !G.player.fire, state: G.state };
 
   // 3. Big player breaks brick
   fresh(); place(20, true);
