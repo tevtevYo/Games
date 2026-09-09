@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp asset URLs with the commit so browsers never use a stale cache
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::8}/g" mario/index.html
       - name: Publish mario/ to the gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
