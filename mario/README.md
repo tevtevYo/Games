@@ -30,7 +30,8 @@ Hold jump longer to jump higher. Running makes you jump higher too.
 ## Features
 
 - Tile-based level with pits, pipes, stairs, bricks, question blocks and a flag pole
-- Goombas (stomp them) and Koopas (stomp, then kick the shell into other enemies)
+- Enemies are Smurfs: little walkers in white hats (stomp them) and Papa Smurfs in red
+  (stomp, then kick the curled-up hat into other enemies). Same behaviour as Goombas and Koopas
 - Coins, and question blocks that release either a super mushroom (grow, smash bricks)
   or a fire mushroom (grow plus straight-flying fireballs) with equal odds
 - Fireballs: X on the keyboard; on touch screens the RUN button becomes FIRE while you have the power

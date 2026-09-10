@@ -1043,67 +1043,83 @@ function drawItem(it) {
 }
 
 function drawEnemy(e) {
+  // All enemies are Smurfs. Walkers (the old goombas) wear white; the elders
+  // (the old koopas) are Papa Smurfs in red, who curl up inside their hat when
+  // stomped. Movement and behaviour are unchanged - only the drawing differs.
   const x = Math.round(e.x), y = Math.round(e.y);
-  if (e.type === 'goomba') {
-    if (!e.alive && !e.flipped) {
-      // squashed
-      ctx.fillStyle = '#8a4a1a';
-      ctx.fillRect(x, y + e.h - 12, e.w, 12);
-      ctx.fillStyle = '#4a2a0a';
-      ctx.fillRect(x + 4, y + e.h - 6, 6, 6); ctx.fillRect(x + e.w - 10, y + e.h - 6, 6, 6);
-      return;
-    }
-    ctx.save();
-    if (e.flipped) { ctx.translate(x + e.w / 2, y + e.h / 2); ctx.scale(1, -1); ctx.translate(-(x + e.w / 2), -(y + e.h / 2)); }
-    const step = Math.floor(e.animT * 6) % 2;
-    ctx.fillStyle = '#8a4a1a';
-    ctx.beginPath(); ctx.arc(x + e.w / 2, y + 12, 14, Math.PI, 0); ctx.fill();
-    ctx.fillRect(x, y + 12, e.w, 8);
-    ctx.fillStyle = '#e8c890';
-    ctx.fillRect(x + 4, y + 18, e.w - 8, 6);
-    ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(x + (step ? 0 : 3), y + 22, 10, 6); ctx.fillRect(x + e.w - 10 - (step ? 0 : 3), y + 22, 10, 6);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x + 7, y + 6, 5, 8); ctx.fillRect(x + e.w - 12, y + 6, 5, 8);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(x + 9, y + 9, 3, 4); ctx.fillRect(x + e.w - 12, y + 9, 3, 4);
-    ctx.fillRect(x + 5, y + 5, 5, 2); ctx.fillRect(x + e.w - 10, y + 5, 5, 2);
-    ctx.restore();
-  } else {
-    // koopa
-    ctx.save();
-    if (e.flipped) { ctx.translate(x + e.w / 2, y + e.h / 2); ctx.scale(1, -1); ctx.translate(-(x + e.w / 2), -(y + e.h / 2)); }
-    if (e.shell) {
-      ctx.fillStyle = '#1e8a1e';
-      ctx.beginPath(); ctx.arc(x + 14, y + 16, 14, Math.PI, 0); ctx.fill();
-      ctx.fillRect(x, y + 16, 28, 8);
-      ctx.fillStyle = '#5ce65c';
-      ctx.fillRect(x + 6, y + 8, 6, 6); ctx.fillRect(x + 16, y + 8, 6, 6); ctx.fillRect(x + 11, y + 15, 6, 6);
-      ctx.fillStyle = '#e8c890';
-      ctx.fillRect(x + 2, y + 22, 24, 6);
-      if (e.shellMoving) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 6 * Math.sign(e.vx), y + 10, 6, 10); }
-    } else {
-      const step = Math.floor(e.animT * 6) % 2;
-      const f = e.vx < 0 ? -1 : 1;
-      ctx.translate(x + e.w / 2, 0); ctx.scale(f, 1); ctx.translate(-(x + e.w / 2), 0);
-      // legs
-      ctx.fillStyle = '#e8c890';
-      ctx.fillRect(x + 4 + (step ? 2 : 0), y + 32, 8, 8); ctx.fillRect(x + 16 - (step ? 2 : 0), y + 32, 8, 8);
-      // shell
-      ctx.fillStyle = '#1e8a1e';
-      ctx.beginPath(); ctx.arc(x + 12, y + 24, 13, Math.PI, 0); ctx.fill();
-      ctx.fillRect(x - 1, y + 24, 26, 8);
-      ctx.fillStyle = '#5ce65c';
-      ctx.fillRect(x + 4, y + 16, 6, 6); ctx.fillRect(x + 13, y + 16, 6, 6);
-      // head
-      ctx.fillStyle = '#e8c890';
-      ctx.fillRect(x + 12, y + 2, 16, 14);
-      ctx.fillRect(x + 20, y + 12, 8, 8);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(x + 22, y + 6, 3, 4);
-    }
-    ctx.restore();
+  const BLUE = '#4fa3e3', BLUE_D = '#2f7fc0', WHITE = '#f8f8f8', RED = '#d8262c', RED_D = '#a51a1f', BLACK = '#111';
+  const step = Math.floor(e.animT * 6) % 2;
+
+  // Squashed walker: a flattened hat over a thin blue band
+  if (e.type === 'goomba' && !e.alive && !e.flipped) {
+    ctx.fillStyle = BLUE; ctx.fillRect(x + 2, y + e.h - 8, e.w - 4, 5);
+    ctx.fillStyle = WHITE; ctx.fillRect(x + 4, y + e.h - 12, e.w - 8, 5); ctx.fillRect(x, y + e.h - 10, 6, 3);
+    ctx.fillStyle = BLACK; ctx.fillRect(x + 9, y + e.h - 7, 3, 2); ctx.fillRect(x + 17, y + e.h - 7, 3, 2);
+    return;
   }
+
+  ctx.save();
+  if (e.flipped) { ctx.translate(x + e.w / 2, y + e.h / 2); ctx.scale(1, -1); ctx.translate(-(x + e.w / 2), -(y + e.h / 2)); }
+  const f = e.vx < 0 ? -1 : 1;                    // face the way we walk
+  ctx.translate(x + e.w / 2, 0); ctx.scale(f, 1); ctx.translate(-(x + e.w / 2), 0);
+
+  if (e.type === 'goomba') {
+    drawSmurf(x, y, e.w, e.h, { hat: WHITE, hatDark: '#d4d4d4', pants: WHITE, beard: false, step, BLUE, BLUE_D, BLACK });
+  } else if (e.shell) {
+    // Papa curled up inside his hat: a red dome with the face peeking out
+    ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(x + 14, y + 17, 13, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = RED_D; ctx.fillRect(x + 1, y + 17, 26, 5);
+    ctx.fillStyle = WHITE; ctx.fillRect(x + 1, y + 22, 26, 3);           // beard along the brim
+    ctx.fillStyle = BLUE; ctx.fillRect(x + 6, y + 11, 16, 8);            // face
+    ctx.fillStyle = WHITE; ctx.fillRect(x + 9, y + 13, 3, 3); ctx.fillRect(x + 16, y + 13, 3, 3);
+    ctx.fillStyle = BLACK; ctx.fillRect(x + 10, y + 14, 2, 2); ctx.fillRect(x + 17, y + 14, 2, 2);
+    ctx.fillStyle = BLUE; ctx.fillRect(x + 4, y + 25, 6, 3); ctx.fillRect(x + 18, y + 25, 6, 3); // tucked feet
+    if (e.shellMoving) { ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 8, y + 10, 6, 3); ctx.fillRect(x - 12, y + 18, 8, 3); }
+  } else {
+    drawSmurf(x, y, e.w, e.h, { hat: RED, hatDark: RED_D, pants: RED, beard: true, step, BLUE, BLUE_D, BLACK });
+  }
+  ctx.restore();
+}
+
+// A little blue fellow filling a w x h box: 28x28 for a walker, 28x40 for Papa.
+function drawSmurf(x, y, w, h, o) {
+  const { hat, hatDark, pants, beard, step, BLUE, BLUE_D, BLACK } = o;
+  const WHITE = '#f8f8f8';
+  const tall = h > 30;
+  const cx = x + w / 2;
+  const headY = y + 13;                                   // head centre
+  const swing = step ? 2 : 0;
+  // Legs and white shoes (walk cycle)
+  const legTop = tall ? y + 30 : y + 22;
+  ctx.fillStyle = BLUE;
+  ctx.fillRect(cx - 7 + swing, legTop, 5, y + h - legTop - 2);
+  ctx.fillRect(cx + 2 - swing, legTop, 5, y + h - legTop - 2);
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(cx - 9 + swing, y + h - 3, 8, 3);
+  ctx.fillRect(cx + 1 - swing, y + h - 3, 8, 3);
+  // Body, pants, arms
+  ctx.fillStyle = BLUE;
+  ctx.fillRect(cx - 6, y + 19, 12, tall ? 8 : 4);
+  ctx.fillRect(cx - 10, y + 19, 4, tall ? 7 : 4); ctx.fillRect(cx + 6, y + 19, 4, tall ? 7 : 4);
+  ctx.fillStyle = pants;
+  ctx.fillRect(cx - 7, tall ? y + 25 : y + 21, 14, tall ? 6 : 3);
+  // Head with ear and nose
+  ctx.fillStyle = BLUE;
+  ctx.beginPath(); ctx.arc(cx, headY, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = BLUE_D;
+  ctx.beginPath(); ctx.arc(cx + 8, headY + 2, 2.5, 0, Math.PI * 2); ctx.fill();   // nose (front)
+  ctx.beginPath(); ctx.arc(cx - 8, headY, 2, 0, Math.PI * 2); ctx.fill();         // ear (back)
+  // Eyes looking forward
+  ctx.fillStyle = WHITE; ctx.fillRect(cx - 4, headY - 3, 4, 4); ctx.fillRect(cx + 1, headY - 3, 4, 4);
+  ctx.fillStyle = BLACK; ctx.fillRect(cx - 2, headY - 2, 2, 2); ctx.fillRect(cx + 3, headY - 2, 2, 2);
+  // Beard (Papa only)
+  if (beard) { ctx.fillStyle = WHITE; ctx.fillRect(cx - 6, headY + 3, 12, 5); ctx.fillRect(cx - 4, headY + 8, 8, 2); }
+  // Phrygian hat: a dome with the tip folded toward the back
+  ctx.fillStyle = hat;
+  ctx.beginPath(); ctx.arc(cx, headY - 2, 9, Math.PI, 0); ctx.fill();
+  ctx.fillRect(cx - 9, headY - 3, 18, 2);
+  ctx.fillRect(cx - 13, headY - 9, 8, 5);
+  ctx.fillStyle = hatDark; ctx.fillRect(cx - 13, headY - 5, 5, 1);
 }
 
 function drawPlayer(p) {
