@@ -1123,6 +1123,9 @@ function drawSmurf(x, y, w, h, o) {
 }
 
 function drawPlayer(p) {
+  // The player is Gargamel: bald with a ring of black hair, heavy brows, a big
+  // nose, a long black robe with a patch, and red shoes. The fire power turns
+  // the robe dark red. Hitboxes are unchanged (24x36 small, 24x60 big).
   if (p.invincible > 0 && Math.floor(p.invincible * 12) % 2 === 0) return;
   const x = Math.round(p.x), y = Math.round(p.y);
   const big = p.big;
@@ -1135,73 +1138,82 @@ function drawPlayer(p) {
   ctx.scale(p.facing, 1);
   ctx.translate(-p.w / 2, 0);
 
-  const s = big ? 2 : 1;         // vertical scale for body parts
-  // Colors
-  const RED = '#e52521', SKIN = '#ffc890', BLUE = '#2a5fd0', BROWN = '#6b3a12', HAIR = '#4a2000';
-  // Fire power swaps the outfit: white hat and shirt, red overalls
-  const SHIRT = p.fire ? '#f6f6f6' : RED, PANTS = p.fire ? RED : BLUE;
+  const SKIN = '#f1c9a3', SKIN_D = '#d9a980', HAIR = '#111', BROW = '#111';
+  const ROBE = p.fire ? '#7a1616' : '#1c1c22', ROBE_D = p.fire ? '#4d0d0d' : '#000';
+  const PATCH = p.fire ? '#c85a1e' : '#6b4a2b', SHOE = '#b0201c', TEETH = '#f4f4f4';
+  const swing = step === 1 ? 2 : 0;
+
+  // ---- Head (same for both sizes; the big version is taller in the body) ----
+  const hy = big ? 2 : 3;                       // head top
+  ctx.fillStyle = SKIN;
+  ctx.fillRect(6, hy, 14, 13);                  // face
+  ctx.fillRect(8, hy - 1, 10, 2);               // bald dome
+  ctx.fillStyle = HAIR;
+  ctx.fillRect(4, hy + 3, 3, 9);                // hair ring, back
+  ctx.fillRect(5, hy + 11, 4, 2);
+  ctx.fillRect(18, hy + 9, 3, 4);               // sideburn, front
+  ctx.fillStyle = BROW;
+  ctx.fillRect(11, hy + 4, 8, 2);               // heavy brow
+  ctx.fillStyle = '#000';
+  ctx.fillRect(15, hy + 6, 2, 2);               // eye
+  ctx.fillStyle = SKIN_D;
+  ctx.fillRect(19, hy + 7, 5, 4);               // big nose sticking out
+  ctx.fillRect(20, hy + 11, 3, 1);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(12, hy + 11, 7, 1);              // sneer
+  ctx.fillStyle = TEETH;
+  ctx.fillRect(14, hy + 12, 4, 1);
 
   if (big) {
-    // Hat
-    ctx.fillStyle = SHIRT; ctx.fillRect(4, 0, 18, 8); ctx.fillRect(8, 8, 18, 4);
-    // Face
-    ctx.fillStyle = SKIN; ctx.fillRect(6, 8, 14, 14);
-    ctx.fillStyle = HAIR; ctx.fillRect(4, 8, 4, 10);
-    ctx.fillStyle = '#000'; ctx.fillRect(15, 11, 3, 4);
-    ctx.fillStyle = HAIR; ctx.fillRect(12, 17, 10, 3);      // moustache
-    // Shirt / arms
-    ctx.fillStyle = SHIRT; ctx.fillRect(2, 22, 20, 12);
-    // Overalls
-    ctx.fillStyle = PANTS; ctx.fillRect(4, 30, 16, 20);
-    ctx.fillRect(6, 24, 4, 8); ctx.fillRect(14, 24, 4, 8);
-    ctx.fillStyle = '#ffd700'; ctx.fillRect(7, 32, 3, 3); ctx.fillRect(14, 32, 3, 3);
-    // Arms: red sleeve at the shoulder, skin hand below. Back arm swings opposite
-    // to the front arm while walking; both go up when jumping.
-    const swing = step === 1 ? 2 : 0;
-    if (jumping) {
-      ctx.fillStyle = SHIRT; ctx.fillRect(-4, 20, 6, 5); ctx.fillRect(20, 20, 6, 5);
-      ctx.fillStyle = SKIN; ctx.fillRect(-4, 13, 6, 8); ctx.fillRect(20, 13, 6, 8);
-    } else {
-      ctx.fillStyle = SHIRT; ctx.fillRect(-4, 22, 6, 6); ctx.fillRect(20, 22, 6, 6);
-      ctx.fillStyle = SKIN; ctx.fillRect(-4, 28 + (2 - swing), 6, 8); ctx.fillRect(20, 28 + swing, 6, 8);
-    }
-    // Legs / shoes
-    ctx.fillStyle = PANTS;
-    ctx.fillStyle = BROWN;
-    if (jumping) { ctx.fillRect(2, 50, 10, 10); ctx.fillRect(14, 48, 10, 10); }
-    else if (step === 1) { ctx.fillRect(0, 50, 10, 10); ctx.fillRect(14, 50, 10, 10); }
-    else if (step === 2) { ctx.fillRect(4, 50, 10, 10); ctx.fillRect(12, 46, 12, 10); }
-    else { ctx.fillRect(3, 50, 10, 10); ctx.fillRect(13, 50, 10, 10); }
+    // ---- Robe: long, from the shoulders to just above the shoes ----
+    ctx.fillStyle = ROBE;
+    ctx.fillRect(3, 15, 18, 38);
+    ctx.fillRect(1, 44, 22, 9);                 // flares out at the hem
+    ctx.fillStyle = ROBE_D;
+    ctx.fillRect(3, 51, 20, 2);                 // ragged hem shadow
+    ctx.fillRect(9, 15, 6, 4);                  // collar shadow
+    ctx.fillStyle = PATCH;
+    ctx.fillRect(7, 30, 5, 5);
+    ctx.fillStyle = ROBE_D;
+    ctx.fillRect(8, 32, 3, 1);
+    // Arms: robe sleeves with pale hands. Front arm swings; both up when jumping.
+    ctx.fillStyle = ROBE;
+    if (jumping) { ctx.fillRect(-3, 12, 6, 12); ctx.fillRect(20, 12, 6, 12); }
+    else { ctx.fillRect(-3, 20, 6, 14); ctx.fillRect(20, 20 + swing, 6, 14); }
+    ctx.fillStyle = SKIN;
+    if (jumping) { ctx.fillRect(-3, 8, 6, 5); ctx.fillRect(20, 8, 6, 5); }
+    else { ctx.fillRect(-3, 34 - swing, 6, 5); ctx.fillRect(20, 34 + swing, 6, 5); }
+    // Legs and shoes
+    ctx.fillStyle = SKIN;
+    ctx.fillRect(6, 52, 4, 4); ctx.fillRect(14, 52, 4, 4);
+    ctx.fillStyle = SHOE;
+    if (jumping) { ctx.fillRect(2, 55, 10, 5); ctx.fillRect(13, 53, 11, 5); }
+    else if (step === 1) { ctx.fillRect(0, 55, 10, 5); ctx.fillRect(14, 55, 10, 5); }
+    else if (step === 2) { ctx.fillRect(4, 55, 10, 5); ctx.fillRect(12, 51, 12, 5); }
+    else { ctx.fillRect(3, 55, 10, 5); ctx.fillRect(13, 55, 10, 5); }
   } else {
-    // Small sprite: 24 x 36
-    // Hat
-    ctx.fillStyle = SHIRT; ctx.fillRect(4, 0, 16, 5); ctx.fillRect(8, 5, 16, 3);
-    // Face
-    ctx.fillStyle = SKIN; ctx.fillRect(6, 5, 12, 11);
-    ctx.fillStyle = HAIR; ctx.fillRect(4, 5, 3, 8);
-    ctx.fillStyle = '#000'; ctx.fillRect(14, 8, 2, 3);
-    ctx.fillStyle = HAIR; ctx.fillRect(11, 13, 8, 2);
-    // Shirt
-    ctx.fillStyle = SHIRT; ctx.fillRect(3, 16, 18, 7);
-    // Overalls
-    ctx.fillStyle = PANTS; ctx.fillRect(5, 21, 14, 9);
-    ctx.fillRect(7, 16, 3, 6); ctx.fillRect(14, 16, 3, 6);
-    ctx.fillStyle = '#ffd700'; ctx.fillRect(8, 22, 2, 2); ctx.fillRect(14, 22, 2, 2);
-    // Arms: red sleeve at the shoulder, skin hand below (see big version)
-    const swing = step === 1 ? 2 : 0;
-    if (jumping) {
-      ctx.fillStyle = SHIRT; ctx.fillRect(0, 15, 5, 3); ctx.fillRect(19, 15, 5, 3);
-      ctx.fillStyle = SKIN; ctx.fillRect(0, 10, 5, 6); ctx.fillRect(19, 10, 5, 6);
-    } else {
-      ctx.fillStyle = SHIRT; ctx.fillRect(0, 16, 5, 4); ctx.fillRect(19, 16, 5, 4);
-      ctx.fillStyle = SKIN; ctx.fillRect(0, 20 + (2 - swing), 5, 6); ctx.fillRect(19, 20 + swing, 5, 6);
-    }
-    // Shoes
-    ctx.fillStyle = BROWN;
-    if (jumping) { ctx.fillRect(2, 30, 9, 6); ctx.fillRect(13, 28, 9, 6); }
-    else if (step === 1) { ctx.fillRect(0, 30, 9, 6); ctx.fillRect(14, 30, 9, 6); }
-    else if (step === 2) { ctx.fillRect(4, 30, 9, 6); ctx.fillRect(12, 27, 10, 6); }
-    else { ctx.fillRect(3, 30, 9, 6); ctx.fillRect(12, 30, 9, 6); }
+    // ---- Small: 24 x 36, a stubby Gargamel ----
+    ctx.fillStyle = ROBE;
+    ctx.fillRect(4, 16, 16, 15);
+    ctx.fillRect(2, 25, 20, 6);                 // hem flare
+    ctx.fillStyle = ROBE_D;
+    ctx.fillRect(4, 30, 18, 1);
+    ctx.fillRect(9, 16, 6, 3);
+    ctx.fillStyle = PATCH;
+    ctx.fillRect(7, 22, 4, 4);
+    ctx.fillStyle = ROBE;
+    if (jumping) { ctx.fillRect(-2, 12, 5, 8); ctx.fillRect(19, 12, 5, 8); }
+    else { ctx.fillRect(-2, 18, 5, 8); ctx.fillRect(19, 18 + swing, 5, 8); }
+    ctx.fillStyle = SKIN;
+    if (jumping) { ctx.fillRect(-2, 8, 5, 4); ctx.fillRect(19, 8, 5, 4); }
+    else { ctx.fillRect(-2, 26 - swing, 5, 4); ctx.fillRect(19, 26 + swing, 5, 4); }
+    ctx.fillStyle = SKIN;
+    ctx.fillRect(7, 31, 3, 3); ctx.fillRect(14, 31, 3, 3);
+    ctx.fillStyle = SHOE;
+    if (jumping) { ctx.fillRect(2, 32, 9, 4); ctx.fillRect(13, 30, 10, 4); }
+    else if (step === 1) { ctx.fillRect(0, 32, 9, 4); ctx.fillRect(14, 32, 9, 4); }
+    else if (step === 2) { ctx.fillRect(4, 32, 9, 4); ctx.fillRect(12, 29, 10, 4); }
+    else { ctx.fillRect(3, 32, 9, 4); ctx.fillRect(12, 32, 9, 4); }
   }
   ctx.restore();
 

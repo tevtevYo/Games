@@ -1,6 +1,7 @@
 # Super Plumber Bros
 
 A Mario-style side-scrolling platformer written in plain HTML5 Canvas and JavaScript.
+You play Gargamel chasing Smurfs through the level.
 No build step, no dependencies.
 
 ## Play online
